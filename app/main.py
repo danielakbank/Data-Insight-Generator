@@ -1,5 +1,3 @@
-# app/main.py
-
 import sys
 import os
 import streamlit as st
@@ -29,6 +27,8 @@ st.write("Upload a CSV dataset to get structured summaries, visual distributions
 # ----------------------------
 file = st.file_uploader("Upload CSV dataset", type=["csv"])
 
+TOP_N = 10  # show only top 10 values for visuals & AI insights
+
 if file:
     try:
         # Load dataset
@@ -54,18 +54,29 @@ if file:
         # Numeric Summary & Visuals
         # ----------------------------
         st.subheader("🔢 Numeric Summary & Distributions")
-
         numeric_summary = summary.get('numeric_summary', {})
-        # filter out ID-like columns
         numeric_cols = [col for col in numeric_summary.keys() if 'id' not in col.lower()]
 
         if numeric_cols:
             st.dataframe(pd.DataFrame(numeric_summary)[numeric_cols])
 
-            for col in numeric_cols:
+            # Split numeric columns into discrete (categorical-like) and continuous
+            discrete_numeric_cols = [col for col in numeric_cols if df[col].nunique() <= TOP_N]
+            continuous_numeric_cols = [col for col in numeric_cols if df[col].nunique() > TOP_N]
+
+            # Discrete numeric columns
+            for col in discrete_numeric_cols:
                 fig, ax = plt.subplots(figsize=(6, 3))
-                sns.histplot(df[col], kde=True, ax=ax, color='skyblue')
-                ax.set_title(f"Distribution of {col}")
+                value_counts = df[col].value_counts().nlargest(TOP_N)
+                sns.barplot(x=value_counts.values, y=value_counts.index.astype(str), ax=ax, palette='Blues_r')
+                ax.set_title(f"Discrete numeric (treated as categorical): {col}")
+                st.pyplot(fig)
+
+            # Continuous numeric columns
+            for col in continuous_numeric_cols:
+                fig, ax = plt.subplots(figsize=(6, 3))
+                sns.histplot(df[col], kde=True, ax=ax, color='skyblue', bins=TOP_N*2)
+                ax.set_title(f"Continuous numeric: {col}")
                 st.pyplot(fig)
         else:
             st.write("No numeric columns detected (or all are ID-like columns).")
@@ -77,10 +88,13 @@ if file:
         correlations = summary.get('correlations', {})
         if correlations:
             corr_df = pd.DataFrame(correlations).fillna(0)
-            fig, ax = plt.subplots(figsize=(8, 6))
-            sns.heatmap(corr_df, annot=True, cmap='coolwarm', center=0)
-            ax.set_title("Strong Numeric Correlations")
-            st.pyplot(fig)
+            if not corr_df.empty and corr_df.shape[0] > 1 and corr_df.shape[1] > 1:
+                fig, ax = plt.subplots(figsize=(8, 6))
+                sns.heatmap(corr_df, annot=True, cmap='coolwarm', center=0)
+                ax.set_title("Strong Numeric Correlations")
+                st.pyplot(fig)
+            else:
+                st.write("Not enough numeric columns with strong correlations to plot heatmap.")
         else:
             st.write("No strong correlations found.")
 
@@ -94,7 +108,7 @@ if file:
                 {
                     "Column": col,
                     "Unique Values": info["unique_count"],
-                    "Top Values": ", ".join([str(k) for k in info["top_values"].keys()])
+                    "Top Values": ", ".join([str(k) for k in list(info["top_values"].keys())[:TOP_N]])
                 }
                 for col, info in cat_summary.items()
             ])
@@ -102,10 +116,10 @@ if file:
 
             # Bar plots for top categorical values
             for col, info in cat_summary.items():
-                top_vals = info["top_values"]
+                top_vals = dict(list(info["top_values"].items())[:TOP_N])
                 fig, ax = plt.subplots(figsize=(6, 3))
                 sns.barplot(x=list(top_vals.values()), y=list(top_vals.keys()), ax=ax, palette='viridis')
-                ax.set_title(f"Top values for {col}")
+                ax.set_title(f"Top {TOP_N} values for {col}")
                 st.pyplot(fig)
         else:
             st.write("No categorical columns detected.")
@@ -114,11 +128,11 @@ if file:
         # AI Insights
         # ----------------------------
         st.subheader("🤖 AI Insights (Explained Simply)")
-
         if st.button("Generate AI Insights"):
             with st.spinner("Analyzing dataset with Mistral..."):
-                insights = generate_insights(summary)
-            st.markdown(insights)  # preserves subtopics & bullets
+                # Pass TOP_N to limit numeric/categorical examples in AI prompt
+                insights = generate_insights(summary, top_n=TOP_N)
+            st.markdown(insights)
 
         # ----------------------------
         # Optional: Free-text dataset question
@@ -126,12 +140,11 @@ if file:
         question = st.text_input("Ask a question about your dataset (optional):")
         if question:
             with st.spinner("Analyzing your question..."):
-                response = generate_insights(summary, question)
+                response = generate_insights(summary, question, top_n=TOP_N)
             st.subheader("🗨️ Answer")
             st.markdown(response)
 
     except Exception as e:
         st.error(f"❌ Error: {e}")
-
 else:
     st.info("Please upload a CSV file to begin analysis.")
