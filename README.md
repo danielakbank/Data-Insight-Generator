@@ -163,11 +163,11 @@ AI insights require Ollama running locally, so the Streamlit cloud demo only sup
 ai-dataset-insight-generator/
 │
 ├── app/
-│   ├── main.py
-│   │
-│   └── services/
-│       ├── data_service.py
-│       └── ai_service.py
+│ ├── main.py
+│ │
+│ └── services/
+│ ├── data_service.py
+│ └── ai_service.py
 │
 ├── requirements.txt
 ├── README.md
