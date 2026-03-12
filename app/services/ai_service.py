@@ -1,75 +1,95 @@
-import ollama
+# app/services/ai_service.py
 
-MODEL = "mistral"  # Ollama local model
-DEFAULT_TOP_N = 10  # Limit numeric/categorical/strong correlation examples
+try:
+    import ollama
+except ImportError:
+    ollama = None
+
+MODEL = "mistral"
+DEFAULT_TOP_N = 5  # reduce prompt size for faster AI generation
+
 
 def summary_to_prompt(summary: dict, question: str = None, top_n: int = DEFAULT_TOP_N) -> str:
     """
-    Build a structured prompt for Mistral AI:
-    - Teen-friendly explanations
-    - Subtopic-separated for clarity
-    - Only include top_n numeric/categorical/correlation examples
+    Convert dataset summary into a structured prompt for the LLM.
+    The explanation should be simple and beginner-friendly.
     """
+
     numeric = summary.get("numeric_summary", {})
-    cat = summary.get("categorical_summary", {})
+    categorical = summary.get("categorical_summary", {})
     metadata = summary.get("metadata", {})
     correlations = summary.get("correlations", {})
     missing = metadata.get("missing_values", {})
 
-    # Filter out ID-like numeric columns
-    numeric_cols = [col for col in numeric.keys() if "id" not in col.lower()]
+    # Remove ID-like numeric columns
+    numeric_cols = [col for col in numeric if "id" not in col.lower()]
 
     prompt = f"""
-You are a senior data scientist. Analyze this dataset and explain it in simple, easy-to-understand terms, like teaching a 16-year-old. Structure your explanation into the following subtopics:
+You are a senior data scientist explaining a dataset to a beginner.
+
+Explain the dataset in simple language (like teaching a 16-year-old).
+
+Structure your answer into these sections:
 
 1. Dataset Overview
 2. Numeric Column Insights
 3. Categorical Column Insights
 4. Strong Correlations
-5. Missing Values / Data Quality Issues
+5. Missing Values / Data Quality
 6. Interesting Observations
-7. Business Insights / Suggestions for further analysis
+7. Possible Business Insights
 
 Dataset Overview:
-- Rows: {metadata.get('rows')}
-- Columns: {metadata.get('columns')}
+Rows: {metadata.get("rows")}
+Columns: {metadata.get("columns")}
 """
 
-    # Numeric summary (top N columns only)
+    # -------- Numeric Columns --------
     if numeric_cols:
-        prompt += "\nNumeric Column Insights (showing examples of min, max, mean, std):\n"
+        prompt += "\nNumeric Column Insights:\n"
         for col in numeric_cols[:top_n]:
             stats = numeric[col]
-            prompt += f"- {col}: min={stats.get('min')}, max={stats.get('max')}, mean={stats.get('mean')}, std={stats.get('std')}\n"
+            prompt += (
+                f"- {col}: "
+                f"min={stats.get('min')}, "
+                f"max={stats.get('max')}, "
+                f"mean={stats.get('mean')}, "
+                f"std={stats.get('std')}\n"
+            )
 
-    # Categorical summary (top N values only)
-    if cat:
-        prompt += "\nCategorical Column Insights (top values):\n"
-        for col, info in cat.items():
+    # -------- Categorical Columns --------
+    if categorical:
+        prompt += "\nCategorical Column Insights:\n"
+        for col, info in list(categorical.items())[:top_n]:
             top_vals = list(info.get("top_values", {}).keys())[:top_n]
-            top_vals_str = ", ".join([str(v) for v in top_vals])
-            prompt += f"- {col}: {info.get('unique_count')} unique values, top values = {top_vals_str}\n"
+            top_vals_str = ", ".join(map(str, top_vals))
+            prompt += f"- {col}: {info.get('unique_count')} unique values (top: {top_vals_str})\n"
 
-    # Strong correlations (top N only per column)
+    # -------- Correlations --------
     if correlations:
-        prompt += "\nStrong Correlations (|r| >= 0.7, showing top examples):\n"
+        prompt += "\nStrong Correlations (|r| ≥ 0.7):\n"
+        count = 0
         for col, others in correlations.items():
-            for i, (other_col, val) in enumerate(others.items()):
-                if i >= top_n:
+            for other_col, val in others.items():
+                prompt += f"- {col} and {other_col}: r={val}\n"
+                count += 1
+                if count >= top_n:
                     break
-                prompt += f"- {col} and {other_col}: correlation = {val}\n"
+            if count >= top_n:
+                break
 
-    # Missing values
+    # -------- Missing Values --------
     if missing:
         missing_summary = {k: v for k, v in missing.items() if v > 0}
         if missing_summary:
-            prompt += "\nMissing Values / Data Quality Issues:\n"
-            for col, val in missing_summary.items():
-                prompt += f"- {col}: {val} missing entries\n"
+            prompt += "\nMissing Values:\n"
+            for col, val in list(missing_summary.items())[:top_n]:
+                prompt += f"- {col}: {val} missing values\n"
 
     prompt += """
-Explain each subtopic clearly and simply, using bullet points if necessary. 
-Keep it concise, easy to read, and focus on insights that are most important for understanding the dataset.
+Explain insights clearly using bullet points where helpful.
+Focus only on the most important findings.
+Keep the explanation concise.
 """
 
     if question:
@@ -80,22 +100,41 @@ Keep it concise, easy to read, and focus on insights that are most important for
 
 def generate_insights(summary: dict, question: str = None, top_n: int = DEFAULT_TOP_N):
     """
-    Generate structured AI insights using Mistral.
-    Returns: string explanation divided into subtopics.
+    Generate AI insights using Ollama.
+    If Ollama is unavailable (e.g., Streamlit Cloud), return a helpful message.
     """
-    prompt = summary_to_prompt(summary, question, top_n=top_n)
+
+    if ollama is None:
+        return """
+⚠️ **AI insights are available only in the local version of this app.**
+
+This online demo still provides:
+
+• Dataset summary  
+• Visualizations  
+• Correlation analysis  
+
+To enable AI insights locally:
+
+1. Install **Ollama**
+2. Run `ollama pull mistral`
+3. Start Ollama and run the Streamlit app locally.
+"""
+
+    prompt = summary_to_prompt(summary, question, top_n)
 
     try:
         response = ollama.chat(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             options={
-                "num_predict": 800,   # increased from 200 → allows full dataset explanation
+                "num_predict": 350,   # faster generation
                 "temperature": 0.2,
                 "top_p": 0.9
             }
         )
+
         return response["message"]["content"]
 
     except Exception as e:
-        return f"Ollama AI Error: {e}"
+        return f"⚠️ AI generation error: {e}"
