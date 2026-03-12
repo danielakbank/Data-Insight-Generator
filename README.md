@@ -16,7 +16,7 @@ AI insights are powered by Mistral running locally via Ollama, enabling fast and
 
 ---
 
-# 🌐 Live Demo
+## 🌐 Live Demo
 
 Try the app online:
 
@@ -35,13 +35,13 @@ The AI Insights feature works only when running the app locally because it requi
 
 ---
 
-# 🚀 Demo Workflow
+## 🚀 Demo Workflow
 
 Upload CSV → Preview Data → Visualizations → AI Insights → Ask Questions
 
 ---
 
-# ✨ Features
+## ✨ Features
 
 ## 📊 Automated Dataset Analysis
 
@@ -88,7 +88,7 @@ The AI will generate a response based on the dataset summary.
 
 ---
 
-# 🛠 Tech Stack
+## 🛠 Tech Stack
 
 - Python
 - Streamlit
@@ -100,9 +100,9 @@ The AI will generate a response based on the dataset summary.
 
 ---
 
-# ⚙️ Installation
+## ⚙️ Installation
 
-## 1️⃣ Clone the repository
+#### 1️⃣ Clone the repository
 
 git clone https://github.com/<YOUR_USERNAME>/ai-dataset-insight-generator.git
 
@@ -110,13 +110,13 @@ cd ai-dataset-insight-generator
 
 ---
 
-## 2️⃣ Install dependencies
+#### 2️⃣ Install dependencies
 
 pip install -r requirements.txt
 
 ---
 
-## 3️⃣ Install Ollama
+#### 3️⃣ Install Ollama
 
 Download Ollama:
 
@@ -124,13 +124,13 @@ https://ollama.com/download
 
 ---
 
-## 4️⃣ Pull the Mistral model
+#### 4️⃣ Pull the Mistral model
 
 ollama pull mistral
 
 ---
 
-## 5️⃣ Run the application
+#### 5️⃣ Run the application
 
 streamlit run app/main.py
 
@@ -138,7 +138,7 @@ The application will open in your browser.
 
 ---
 
-# ☁️ Deployment
+## ☁️ Deployment
 
 This app can be deployed using Streamlit Community Cloud.
 
@@ -158,24 +158,21 @@ AI insights require Ollama running locally, so the Streamlit cloud demo only sup
 
 ---
 
-# 📁 Project Structure
+## 📁 Project Structure
 
-ai-dataset-insight-generator/
-│
-├── app/
-│ ├── main.py
-│ │
-│ └── services/
-│ ├── data_service.py
-│ └── ai_service.py
-│
-├── requirements.txt
-├── README.md
-└── .gitignore
+**ai-dataset-insight-generator/**
+- **app/**
+  - `main.py`
+  - **services/**
+    - `data_service.py`
+    - `ai_service.py`
+- `requirements.txt`
+- `README.md`
+- `.gitignore`
 
 ---
 
-# 📊 Example Use Cases
+## 📊 Example Use Cases
 
 This project can be used for:
 
@@ -187,7 +184,7 @@ This project can be used for:
 
 ---
 
-# 🔮 Future Improvements
+## 🔮 Future Improvements
 
 Possible enhancements:
 
@@ -199,7 +196,7 @@ Possible enhancements:
 
 ---
 
-# 📜 License
+## 📜 License
 
 MIT License
 
@@ -207,7 +204,7 @@ You are free to use, modify, and distribute this project.
 
 ---
 
-# ⭐ Support the Project
+## ⭐ Support the Project
 
 If you found this project useful:
 
