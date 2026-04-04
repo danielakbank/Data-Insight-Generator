@@ -104,7 +104,7 @@ The AI will generate a response based on the dataset summary.
 
 #### 1️⃣ Clone the repository
 
-git clone https://github.com/<YOUR_USERNAME>/ai-dataset-insight-generator.git
+git clone https://github.com/danielakbank/ai-dataset-insight-generator.git
 
 cd ai-dataset-insight-generator
 
